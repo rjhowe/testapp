@@ -1,7 +1,12 @@
 ###################################################################
+## Base image
+###################################################################
+FROM registry.access.redhat.com/ubi8/nginx-118 AS base
+
+###################################################################
 ## Admin Frontend building
 ###################################################################
-FROM node:latest AS prepare_frontend
+FROM registry.access.redhat.com/ubi8/nodejs-16 AS prepare_frontend
 
 ARG API_HOSTNAME
 ENV GENERATE_SOURCEMAP false
@@ -37,3 +42,18 @@ ENV PARCEL_WORKERS 1
 RUN npm run build
 
 ###################################################################
+## Install image
+###################################################################
+
+# now start with the real image
+FROM base AS install_app
+
+ARG API_HOSTNAME
+ENV GENERATE_SOURCEMAP false
+ENV REACT_APP_API_HOSTNAME=${API_HOSTNAME}
+ENV WORKDIR_FRONTEND=/opt/app-root/src
+
+COPY --from=prepare_frontend ${WORKDIR_FRONTEND}/build /opt/app-root/src
+
+USER 1001
+CMD nginx -g "daemon off;"
